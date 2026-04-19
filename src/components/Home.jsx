@@ -1,5 +1,6 @@
 import { BookOpen, Plus, Trash2, Brain } from 'lucide-react'
 
+
 const colorMap = {
   purple: 'bg-purple-100 text-purple-700',
   blue: 'bg-blue-100 text-blue-700',
@@ -8,7 +9,7 @@ const colorMap = {
   pink: 'bg-pink-100 text-pink-700',
 }
 
-export default function Home({ decks, onStudy, onCreateDeck, onDeleteDeck }) {
+export default function Home({ decks, user, onStudy, onCreateDeck, onDeleteDeck, onLogout }) {
   const totalCards = decks.reduce((a, d) => a + d.cards.length, 0)
   const totalMastered = decks.reduce((a, d) => a + d.stats.know, 0)
 
@@ -16,15 +17,24 @@ export default function Home({ decks, onStudy, onCreateDeck, onDeleteDeck }) {
     <div className="max-w-xl mx-auto px-4 py-8">
 
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="bg-purple-600 p-2 rounded-xl">
-          <Brain className="text-white w-6 h-6" />
-        </div>
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">AI Flashcards</h1>
-          <p className="text-sm text-gray-500">Your AI-powered study companion</p>
-        </div>
-      </div>
+     {/* Header */}
+<div className="flex items-center justify-between mb-6">
+  <div className="flex items-center gap-3">
+    <div className="bg-purple-600 p-2 rounded-xl">
+      <Brain className="text-white w-6 h-6" />
+    </div>
+    <div>
+      <h1 className="text-xl font-semibold text-gray-900">AI Flashcards</h1>
+      <p className="text-sm text-gray-500">Hi, {user} 👋</p>
+    </div>
+  </div>
+  <button
+    onClick={onLogout}
+    className="text-sm text-gray-500 hover:text-red-500 border border-gray-200 hover:border-red-300 px-3 py-1.5 rounded-lg transition-colors"
+  >
+    Logout
+  </button>
+</div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 mb-6">
