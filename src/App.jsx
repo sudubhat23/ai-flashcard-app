@@ -1,97 +1,229 @@
 import { useState, useEffect } from 'react'
-import Login from './components/Login'
-import Home from './components/Home'
-import CreateDeck from './components/CreateDeck'
-import StudyMode from './components/StudyMode'
-import Results from './components/Results'
+import Header from './components/Dashboard/Header'
+import Home from './components/Dashboard/Home'
+import Login from './components/Auth/Login'
+import ProfileModal from './components/Auth/ProfileModal'
+import SettingsModal from './components/Common/SettingsModal'
+import CreateDeck from './components/Deck/CreateDeck'
+import DeckEditor from './components/Deck/DeckEditor'
+import StudyMode from './components/Study/StudyMode'
+import QuizMode from './components/Study/QuizMode'
+import TypeMode from './components/Study/TypeMode'
+import Results from './components/Common/Results'
 
-const SAMPLE_DECK = {
-  id: 1,
-  title: "JavaScript Basics",
-  topic: "JavaScript",
-  color: "purple",
-  cards: [
-    { q: "What is a closure?", a: "A function that retains access to its outer scope's variables even after the outer function has returned." },
-    { q: "What does === do?", a: "Strict equality — checks both value AND type without type coercion." },
-    { q: "What is event bubbling?", a: "When an event fires on a child, it propagates up through all ancestor elements in the DOM." },
-  ],
-  stats: { know: 0, almost: 0, nope: 0 }
-}
+import { authService } from './services/authService'
+import { storageService } from './services/storageService'
 
 export default function App() {
-const [user, setUser] = useState(null) 
- const [decks, setDecks] = useState(() => {
-  const currentUser = localStorage.getItem('fc-loggedIn')
-  const saved = localStorage.getItem(`flashcard-decks-${currentUser}`)
-  return saved ? JSON.parse(saved) : [SAMPLE_DECK]
-})
-  const [view, setView] = useState('home')
+  // Session & User State
+  const [user, setUser] = useState(() => authService.getCurrentUser())
+  const [decks, setDecks] = useState(() => {
+    const currentUser = authService.getCurrentUser()
+    return currentUser ? storageService.getUserDecks(currentUser.username) : []
+  })
+
+  // Navigation & Modals State
+  const [view, setView] = useState('home') // 'home' | 'create' | 'edit-deck' | 'study' | 'results'
+  const [studyMode, setStudyMode] = useState('flip') // 'flip' | 'quiz' | 'type'
   const [activeDeck, setActiveDeck] = useState(null)
   const [sessionStats, setSessionStats] = useState(null)
+  const [showProfileModal, setShowProfileModal] = useState(false)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
 
+  // Reload decks whenever user changes
   useEffect(() => {
-  if (user) {
-    localStorage.setItem(`flashcard-decks-${user}`, JSON.stringify(decks))
+    if (user) {
+      const userDecks = storageService.getUserDecks(user.username)
+      setDecks(userDecks)
+    } else {
+      setDecks([])
+    }
+  }, [user])
+
+  // Auth Handlers
+  const handleLoginSuccess = (authenticatedUser) => {
+    setUser(authenticatedUser)
+    const userDecks = storageService.getUserDecks(authenticatedUser.username)
+    setDecks(userDecks)
+    setView('home')
   }
-}, [decks, user])
 
-const handleLogin = (username) => {
-  setUser(username)
-  const saved = localStorage.getItem(`flashcard-decks-${username}`)
-  setDecks(saved ? JSON.parse(saved) : [SAMPLE_DECK])
-}
+  const handleLogout = () => {
+    authService.logout()
+    setUser(null)
+    setDecks([])
+    setActiveDeck(null)
+    setView('home')
+  }
 
- const handleLogout = () => {
-  localStorage.removeItem('fc-loggedIn')
-  setUser(null)
-  setDecks([SAMPLE_DECK])
-  setView('home')
-}
+  const handleUpdateUser = (updatedUser) => {
+    setUser(updatedUser)
+  }
 
-  const handleStudy = (deck) => { setActiveDeck(deck); setView('study') }
-
-  const handleDeckCreated = (deck) => {
-    setDecks(prev => [...prev, deck])
-    setActiveDeck(deck)
+  // Deck Handlers
+  const handleDeckCreated = (newDeck) => {
+    const updated = storageService.saveDeck(user.username, newDeck)
+    setDecks(updated)
+    setActiveDeck(newDeck)
+    setStudyMode('flip')
     setView('study')
   }
 
-  const handleDeleteDeck = (id) => setDecks(prev => prev.filter(d => d.id !== id))
+  const handleSaveDeck = (updatedDeck) => {
+    const updated = storageService.saveDeck(user.username, updatedDeck)
+    setDecks(updated)
+    setView('home')
+  }
+
+  const handleDeleteDeck = (deckId) => {
+    const updated = storageService.deleteDeck(user.username, deckId)
+    setDecks(updated)
+  }
+
+  const handleExportDeck = (deck) => {
+    storageService.exportUserData(user.username)
+  }
+
+  const handleDecksImported = (importedDecks) => {
+    setDecks(importedDecks)
+  }
+
+  // Study Handlers
+  const handleStartStudy = (deck, mode = 'flip') => {
+    setActiveDeck(deck)
+    setStudyMode(mode)
+    setView('study')
+  }
 
   const handleSessionDone = (stats) => {
     setSessionStats(stats)
-    setDecks(prev => prev.map(d =>
-      d.id === activeDeck.id
-        ? { ...d, stats: { know: stats.know, almost: stats.almost, nope: stats.nope } }
-        : d
-    ))
+    if (activeDeck) {
+      const currentKnow = activeDeck.stats?.know || 0
+      const updatedDeck = {
+        ...activeDeck,
+        stats: {
+          know: Math.max(currentKnow, stats.know || 0),
+          almost: stats.almost || 0,
+          nope: stats.nope || 0,
+          lastStudied: new Date().toISOString()
+        }
+      }
+      const updatedDecks = storageService.saveDeck(user.username, updatedDeck)
+      setDecks(updatedDecks)
+      setActiveDeck(updatedDeck)
+    }
     setView('results')
   }
 
-  const goHome = () => { setView('home'); setActiveDeck(null); setSessionStats(null) }
+  const goHome = () => {
+    setView('home')
+    setActiveDeck(null)
+    setSessionStats(null)
+  }
 
-  if (!user) return <Login onLogin={handleLogin} />
+  // Unauthenticated View
+  if (!user) {
+    return <Login onLoginSuccess={handleLoginSuccess} />
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {view === 'home' && (
-        <Home
-          decks={decks}
+    <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-purple-500 selection:text-white font-sans antialiased">
+      {/* Header */}
+      <Header
+        user={user}
+        onOpenProfile={() => setShowProfileModal(true)}
+        onOpenSettings={() => setShowSettingsModal(true)}
+        onLogout={handleLogout}
+      />
+
+      {/* Main View Container */}
+      <main className="pb-16">
+        {view === 'home' && (
+          <Home
+            decks={decks}
+            user={user}
+            onStudy={handleStartStudy}
+            onCreateDeck={() => setView('create')}
+            onEditDeck={(deck) => { setActiveDeck(deck); setView('edit-deck'); }}
+            onDeleteDeck={handleDeleteDeck}
+            onExportDeck={handleExportDeck}
+          />
+        )}
+
+        {view === 'create' && (
+          <CreateDeck
+            user={user}
+            onBack={goHome}
+            onDeckCreated={handleDeckCreated}
+          />
+        )}
+
+        {view === 'edit-deck' && activeDeck && (
+          <DeckEditor
+            deck={activeDeck}
+            onBack={goHome}
+            onSaveDeck={handleSaveDeck}
+          />
+        )}
+
+        {view === 'study' && activeDeck && (
+          <>
+            {studyMode === 'flip' && (
+              <StudyMode
+                user={user}
+                deck={activeDeck}
+                onBack={goHome}
+                onSessionDone={handleSessionDone}
+                onChangeMode={(m) => setStudyMode(m)}
+              />
+            )}
+            {studyMode === 'quiz' && (
+              <QuizMode
+                user={user}
+                deck={activeDeck}
+                onBack={goHome}
+                onSessionDone={handleSessionDone}
+                onChangeMode={(m) => setStudyMode(m)}
+              />
+            )}
+            {studyMode === 'type' && (
+              <TypeMode
+                user={user}
+                deck={activeDeck}
+                onBack={goHome}
+                onSessionDone={handleSessionDone}
+                onChangeMode={(m) => setStudyMode(m)}
+              />
+            )}
+          </>
+        )}
+
+        {view === 'results' && activeDeck && sessionStats && (
+          <Results
+            deck={activeDeck}
+            stats={sessionStats}
+            onHome={goHome}
+            onStudyAgain={() => setView('study')}
+          />
+        )}
+      </main>
+
+      {/* Modals */}
+      {showProfileModal && (
+        <ProfileModal
           user={user}
-          onStudy={handleStudy}
-          onCreateDeck={() => setView('create')}
-          onDeleteDeck={handleDeleteDeck}
-          onLogout={handleLogout}
+          onClose={() => setShowProfileModal(false)}
+          onUpdateUser={handleUpdateUser}
         />
       )}
-      {view === 'create' && (
-        <CreateDeck onBack={goHome} onDeckCreated={handleDeckCreated} />
-      )}
-      {view === 'study' && activeDeck && (
-        <StudyMode deck={activeDeck} onBack={goHome} onSessionDone={handleSessionDone} />
-      )}
-      {view === 'results' && (
-        <Results deck={activeDeck} stats={sessionStats} onHome={goHome} onStudyAgain={() => setView('study')} />
+
+      {showSettingsModal && (
+        <SettingsModal
+          user={user}
+          onClose={() => setShowSettingsModal(false)}
+          onUpdateUser={handleUpdateUser}
+          onDecksImported={handleDecksImported}
+        />
       )}
     </div>
   )

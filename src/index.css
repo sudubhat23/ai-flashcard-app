@@ -1,14 +1,94 @@
 @import "tailwindcss";
 
-.card-flip { perspective: 1000px; }
+@layer utilities {
+  .glass-card {
+    background: rgba(17, 24, 39, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .glass-card-hover {
+    transition: all 0.3s ease;
+  }
+  .glass-card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px -10px rgba(124, 58, 237, 0.3);
+    border-color: rgba(168, 85, 247, 0.4);
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #c084fc 0%, #a855f7 50%, #6366f1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .gradient-bg {
+    background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+  }
+
+  .glow-purple {
+    box-shadow: 0 0 25px rgba(168, 85, 247, 0.35);
+  }
+}
+
+/* 3D Card Flip FX */
+.card-flip { 
+  perspective: 1200px; 
+}
 .card-inner {
-  position: relative; width: 100%; height: 100%;
-  transition: transform 0.55s cubic-bezier(.4,0,.2,1);
+  position: relative; 
+  width: 100%; 
+  height: 100%;
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
   transform-style: preserve-3d;
 }
-.card-inner.flipped { transform: rotateY(180deg); }
-.card-face {
-  position: absolute; width: 100%; height: 100%;
-  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+.card-inner.flipped { 
+  transform: rotateY(180deg); 
 }
-.card-back { transform: rotateY(180deg); }
+.card-face {
+  position: absolute; 
+  width: 100%; 
+  height: 100%;
+  backface-visibility: hidden; 
+  -webkit-backface-visibility: hidden;
+  border-radius: 1.5rem;
+}
+.card-back { 
+  transform: rotateY(180deg); 
+}
+
+/* Keyframe Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseSlow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pulse-slow {
+  animation: pulseSlow 4s infinite ease-in-out;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(124, 58, 237, 0.4);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 85, 247, 0.7);
+}
